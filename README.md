@@ -2,15 +2,20 @@
 
 **Indiana University — Research Data Analyst Take-Home Assignment**
 
-**Status:** Work in progress
+
+**Status:** Completed — Core implementation and reproducibility checks
 
 ## 1. Project Overview
 
-This project develops a reproducible, CPU-based data engineering and analysis pipeline for the PathMNIST dataset from the MedMNIST project.
+This project develops a reproducible, CPU-based data engineering, analysis and machine-learning pipeline for the PathMNIST dataset from the MedMNIST project.
 
-The pipeline ingests medical images from an NPZ archive, validates their structure, extracts image-level metadata, performs quality-control checks, stores the results in DuckDB and uses SQL to investigate class distributions and image characteristics.
+The pipeline ingests 107,180 medical images from an NPZ archive, validates dataset structure and labels, extracts image-level metadata, performs quality-control checks, detects exact duplicates using SHA-256 hashing, and stores structured results in DuckDB. SQL queries are used to analyze class distributions, compare image-intensity characteristics and identify unusual images for visualization.
 
-A simple machine-learning baseline and its evaluation will be added in the next stage.
+A nine-class logistic regression classifier serves as a CPU-based baseline. Using the predefined dataset splits, model configurations were compared on validation data, and the selected model was evaluated on the held-out test set. Evaluation includes accuracy, balanced accuracy, per-class precision, recall, F1-score, specificity and a confusion matrix.
+
+The project also examines data-leakage risks, scalability, incremental image processing and the limitations of aggregate evaluation metrics in medical imaging.
+
+All five pipeline scripts have been successfully executed in sequence, and the resulting metadata, analyses, visualizations and model-evaluation outputs have been verified in the existing Python environment.
 
 ### Dataset clarification
 
@@ -41,40 +46,83 @@ The NPZ archive contains six arrays: `train_images`, `train_labels`, `val_images
 
 The dataset supplies predefined training, validation and test splits, which are preserved in the pipeline.
 
+
 ## 3. Environment and Setup
 
-The project uses Python and libraries suitable for a CPU-based implementation. No GPU, CUDA, cloud infrastructure or deep-learning framework is required.
+The project uses Python 3.12 and libraries suitable for a
+CPU-based implementation. No GPU, CUDA, cloud infrastructure
+or deep-learning framework is required.
 
 ### Dependencies
 
-* Python 3.12
-* NumPy
-* Pandas
-* DuckDB
-* Matplotlib
-* scikit-learn (for the planned baseline model)
+The primary dependencies are:
+
+- Python 3.12
+- NumPy
+- Pandas
+- DuckDB
+- Matplotlib
+- scikit-learn
+
+Exact package versions, including supporting dependencies,
+are recorded in `requirements.txt`.
 
 ### Installation
 
-From the project root, create and activate a virtual environment.
+From the project root, create and activate a virtual
+environment.
 
 On Windows using Git Bash:
 
 ```bash
 python -m venv .venv
 source .venv/Scripts/activate
-python -m pip install numpy pandas duckdb matplotlib scikit-learn
+python -m pip install -r requirements.txt
 ```
 
-### Download the dataset
+On macOS or Linux:
 
-Download the standard `pathmnist.npz` file from the official MedMNIST Zenodo distribution and place it at:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
+
+All pipeline scripts should be run from the project root
+with the virtual environment activated.
+
+### Download the Dataset
+
+Download the standard 28 × 28 `pathmnist.npz` file from the
+official MedMNIST Zenodo distribution:
+
+https://zenodo.org/records/10519652
+
+Create a `data` directory in the project root if one does
+not already exist, and place the downloaded file at:
 
 ```text
 data/pathmnist.npz
 ```
 
+The expected project structure includes:
+
+```text
+iu-pathmnist/
+├── data/
+│   └── pathmnist.npz
+├── src/
+├── sql/
+├── output/
+├── README.md
+└── requirements.txt
+```
+
 The dataset is not included in the GitHub repository.
+It must be downloaded separately before running the pipeline.
+
+The generated DuckDB database is also excluded from version
+control and is recreated by running `src/build_dataset.py`.
 
 ## 4. Data Ingestion and Metadata
 
@@ -648,6 +696,14 @@ The following components have been implemented:
 - Test confusion-matrix visualization
 - Research and data-engineering judgment responses
 
-Remaining work consists of final documentation review,
-dependency recording, end-to-end reproducibility checks
-and GitHub submission.
+
+The core implementation, documentation, dependency recording,
+and GitHub upload are complete.
+
+All five pipeline scripts were successfully executed in
+sequence in the existing Python virtual environment. The
+reproducibility run generated the expected metadata, SQL
+analysis results, visualizations, and model evaluation outputs.
+
+The project has not been independently tested in a newly
+created virtual environment.
