@@ -1,0 +1,8 @@
+
+.venv/
+data/
+__pycache__/
+*.pyc
+output/*.duckdb
+output/*.wal
+.vscode/
