@@ -110,7 +110,6 @@ print(
     "Flagged images:",
     df["low_variance_flag"].sum()
 )
-import duckdb
 
 output_dir = PROJECT_ROOT / "output"
 output_dir.mkdir(exist_ok=True)
