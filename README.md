@@ -336,10 +336,149 @@ The following files were generated:
 No additional model selection was performed using the test
 results.
 
+## 8. Results and Interpretation
 
-## 8. Research and Data Engineering Considerations
+### 8.1 Dataset quality and validation
 
-### 8.1 Data leakage
+The metadata pipeline successfully processed all 107,180 PathMNIST images across the predefined training, validation and test splits.
+
+Independent database verification found:
+
+- 107,180 metadata records
+- 107,180 unique image IDs
+- 0 missing metadata values
+- 0 invalid stored image statistics
+- 0 invalid stored dimensions
+- 0 exact duplicate images
+
+These results indicate that the implemented ingestion and metadata pipeline produced a structurally consistent dataset.
+
+The absence of exact duplicates does not establish complete independence between images. SHA-256 hashing identifies only identical pixel arrays and cannot detect near-duplicates, related tissue patches, or images originating from the same patient or source slide.
+
+### 8.2 Low-variance and unusual-image findings
+
+A low-variance screening threshold was defined using the lowest 1% of the observed pixel-standard-deviation distribution.
+
+This flagged 1,072 images:
+
+- 957 training images
+- 114 validation images
+- 1 test image
+
+These images were retained rather than automatically removed because low pixel variance alone does not establish that an image is corrupted or scientifically invalid.
+
+The unusual-image analysis separately selected extreme examples according to:
+
+- low mean intensity
+- high mean intensity
+- low pixel standard deviation
+
+After overlapping selections were deduplicated, 13 unique images remained:
+
+- 5 unusually bright images
+- 5 unusually dark images
+- 3 low-contrast images
+
+All five brightest examples belonged to label 2, while all five darkest examples belonged to label 1. The remaining low-contrast examples belonged to label 5.
+
+These findings are descriptive quality-control observations only. They do not establish that the selected images are medically abnormal, corrupted, or incorrectly labeled.
+
+### 8.3 Differences between dataset splits
+
+The training and validation splits had closely matching class distributions, while the test split differed more noticeably.
+
+For example, label 0 represented approximately 10.41% of the training set but 18.64% of the test set.
+
+Image characteristics also differed between some splits. Label 1 had an average mean intensity of approximately 142.27 in the training set and 112.18 in the test set.
+
+These observations suggest that the test distribution is not identical to the training distribution.
+
+The analysis does not establish why these differences occur. Possible causes could include differences in source population, acquisition conditions, staining, or sampling, but these explanations cannot be confirmed from the available NPZ metadata alone.
+
+### 8.4 Baseline model performance
+
+The selected logistic regression configuration used:
+
+- `C=0.1`
+- `max_iter=300`
+- `lbfgs`
+- a reproducible stratified subset of 20,000 training images
+
+The model achieved the following results on the untouched test split:
+
+| Metric | Test result |
+|---|---:|
+| Accuracy | 47.60% |
+| Balanced accuracy | 40.50% |
+| Macro F1 | 0.384 |
+| Weighted F1 | 0.461 |
+
+The difference between overall accuracy and balanced accuracy indicates that performance was uneven across classes.
+
+Accuracy alone would therefore give an incomplete picture of model quality.
+
+### 8.5 Class-specific performance
+
+Performance varied substantially between tissue classes.
+
+Class 0 performed relatively well, with approximately:
+
+- 81.2% recall
+- 90.7% precision
+
+Class 1 achieved:
+
+- 100% recall
+- approximately 57.4% precision
+
+This means the model correctly identified every true class-1 example in the test set, but also incorrectly assigned a substantial number of images from other classes to class 1.
+
+Class 7 was the most difficult class, with approximately 9.7% recall.
+
+This demonstrates why per-class metrics are necessary in addition to aggregate accuracy.
+
+### 8.6 Confusion-matrix interpretation
+
+The confusion matrix shows that model errors were structured rather than uniformly distributed across classes.
+
+Notable patterns include:
+
+- Class 4 was frequently predicted as class 1.
+- Class 2 was frequently predicted as class 5.
+- Class 7 was often predicted as classes 2 or 5.
+- Class 6 was frequently predicted as class 8.
+- Classes 0 and 1 were recognized more reliably than several of the other classes.
+
+Some errors were asymmetric. For example, many true class-4 images were predicted as class 1, while true class-1 images were almost always correctly predicted as class 1.
+
+This suggests that the linear model learned decision boundaries that separate some tissue categories more effectively than others.
+
+![PathMNIST Test Confusion Matrix](output/model_evaluation.png)
+
+### 8.7 Interpretation of the baseline
+
+The logistic regression model should be interpreted as a CPU-friendly baseline rather than a high-performance image classifier.
+
+Flattening each RGB image into a one-dimensional vector removes explicit spatial relationships between pixels. As a result, the model cannot directly learn local tissue morphology or spatial features that may distinguish histopathology classes.
+
+The uneven class performance and structured confusion patterns suggest that a model capable of learning spatial image features, such as a convolutional neural network, would be a reasonable next comparison.
+
+However, improving classification performance was not the primary objective of this take-home exercise. The baseline was intended to demonstrate correct data handling, evaluation methodology, reproducibility and model interpretation.
+
+### 8.8 Main conclusions
+
+The main findings from the project are:
+
+1. The ingestion and metadata pipeline produced a complete and internally consistent structured dataset.
+2. No exact duplicate images were detected, although near-duplicate and patient-level overlap cannot be ruled out.
+3. Several classes and dataset splits showed measurable differences in intensity characteristics and class proportions.
+4. The simple logistic regression baseline achieved moderate overall performance but performed very unevenly across classes.
+5. Per-class metrics and the confusion matrix revealed weaknesses that overall accuracy alone would hide.
+6. The results demonstrate the importance of combining data-quality checks, split-level analysis and class-specific evaluation when working with medical imaging datasets.
+
+## 9. Research and Data Engineering Considerations
+
+### 9.1 Data leakage
 
 The principal leakage risks considered were patient- or
 slide-level overlap, exact and near-duplicate images across
@@ -368,7 +507,7 @@ These safeguards address several leakage risks, but the
 available provenance information is insufficient to rule
 out all possible medical-imaging leakage.
 
-### 8.2 Scaling to one million images
+### 9.2 Scaling to one million images
 
 If the pipeline needed to process one million medical images
 arriving continuously from several hospitals, I would
@@ -407,7 +546,7 @@ other acquisition characteristics.
 These measures would improve scalability while supporting
 data quality, traceability and leakage prevention.
 
-### 8.3 Incremental processing
+### 9.3 Incremental processing
 
 To process 10,000 newly arriving images without
 recalculating metadata for the existing one million,
@@ -442,7 +581,7 @@ Existing successfully processed records would remain
 unchanged unless their source content or processing
 requirements changed.
 
-### 8.4 Scientifically misleading results
+### 9.4 Scientifically misleading results
 
 A data pipeline can execute successfully and produce
 technically valid outputs while still supporting misleading
@@ -479,11 +618,11 @@ These practices distinguish successful code execution
 from scientifically reliable evaluation.
 
 
-## 9. Running the Project
+## 10. Running the Project
 
 After installing dependencies and downloading the PathMNIST dataset, run the following commands from the project root.
 
-### 9.1 Build and Validate the Dataset
+### 10.1 Build and Validate the Dataset
 
 ```bash
 python src/build_dataset.py
@@ -494,7 +633,7 @@ The first script loads the PathMNIST dataset, validates its structure, extracts 
 
 The second script independently verifies the stored metadata, including record counts, dataset splits, unique image identifiers, invalid statistics, and image dimensions.
 
-### 9.2 Run SQL Analysis
+### 10.2 Run SQL Analysis
 
 ```bash
 python src/analyze.py
@@ -505,7 +644,7 @@ The analysis script executes SQL queries against the DuckDB database to investig
 
 The visualization script retrieves the selected unusual images from the original NPZ file and generates a figure showing unusually bright, dark, and low-contrast examples.
 
-### 9.3 Train and Evaluate the Baseline Classifier
+### 10.3 Train and Evaluate the Baseline Classifier
 
 ```bash
 python src/model.py
@@ -519,7 +658,7 @@ It calculates accuracy, balanced accuracy, per-class precision, recall, F1-score
 
 Running the script retrains the classifier and regenerates its evaluation outputs. The optimizer's convergence warning is a documented limitation.
 
-### 9.4 Generated Outputs
+### 10.4 Generated Outputs
 
 The pipeline generates the following files:
 
@@ -536,7 +675,7 @@ The pipeline generates the following files:
 The original PathMNIST dataset and generated DuckDB database are excluded from version control and can be recreated using the provided instructions.
 
 
-## 10. Limitations
+## 11. Limitations
 
 ### Data Quality and Provenance
 
@@ -645,7 +784,7 @@ benchmarking or external clinical validation was performed.
 The test set was reserved for the final evaluation.
 
 
-## 11. AI Assistance
+## 12. AI Assistance
 
 ChatGPT was used to interpret assignment requirements,
 plan the project structure, explain Python and SQL
@@ -677,7 +816,7 @@ validation and test outputs, and the unresolved optimizer
 convergence warning was retained as a documented
 limitation.
 
-## 12. Current Status
+## 13. Current Status
 
 The following components have been implemented:
 
